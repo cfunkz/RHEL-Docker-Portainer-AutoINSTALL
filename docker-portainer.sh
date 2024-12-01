@@ -66,9 +66,17 @@ else
     # Install prerequisites if Docker is not installed
     echo "Installing Docker..."
     run_command "sudo dnf install -y dnf-utils device-mapper-persistent-data lvm2"
+    
+    # Add the Docker repository for CentOS/RHEL (works for Rocky Linux)
     run_command "sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
+    
+    # Install Docker
     run_command "sudo dnf install -y docker-ce docker-ce-cli containerd.io"
+    
+    # Start Docker service
     run_command "sudo systemctl start docker"
+    
+    # Enable Docker to start on boot
     run_command "sudo systemctl enable docker"
 fi
 
@@ -88,12 +96,11 @@ else
         portainer/portainer-ce"
 fi
 
-# Get the servers IP
+# Get the server's IP address
 SERVER_IP=$(hostname -I | awk '{print $1}')
 if [ -z "$SERVER_IP" ]; then
     SERVER_IP=$(curl -s http://checkip.amazonaws.com || echo "unknown")
 fi
 
-# Display success message
 echo "Docker and Portainer installation completed successfully!"
 echo "Portainer is accessible at http://$SERVER_IP:9000"
