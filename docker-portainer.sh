@@ -9,7 +9,7 @@ DRY_RUN=false
 # Cleanup if error
 cleanup() {
     echo "Error. Rollback..."
-    
+
     # Simulate rollback if DRY_RUN is true
     if [ "$DRY_RUN" = false ]; then
         # Stop and remove the Portainer if exists
@@ -29,7 +29,7 @@ cleanup() {
             echo "Stopping Docker service..."
             sudo systemctl stop docker || echo "Failed to stop Docker service."
         fi
-	# Disable Docker
+        # Disable Docker
         if systemctl is-enabled --quiet docker; then
             echo "Disabling Docker service..."
             sudo systemctl disable docker || echo "Failed to disable Docker service."
@@ -59,39 +59,40 @@ run_command() {
 # Trap errors and call the rollback
 trap cleanup ERR
 
-# Install prerequisites
-echo "Installing prerequisites..."
-run_command "sudo dnf install -y dnf-utils device-mapper-persistent-data lvm2"
+# Check if Docker is installed
+if command -v docker &>/dev/null; then
+    echo "Docker is already installed."
+else
+    # Install prerequisites if Docker is not installed
+    echo "Installing Docker..."
+    run_command "sudo dnf install -y dnf-utils device-mapper-persistent-data lvm2"
+    run_command "sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
+    run_command "sudo dnf install -y docker-ce docker-ce-cli containerd.io"
+    run_command "sudo systemctl start docker"
+    run_command "sudo systemctl enable docker"
+fi
 
-# Add Docker repository
-echo "Adding Docker repository..."
-run_command "sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
-
-# Install Docker
-echo "Installing Docker..."
-run_command "sudo dnf install -y docker-ce docker-ce-cli containerd.io"
-
-# Start and enable Docker
-echo "Starting and enabling Docker service..."
-run_command "sudo systemctl start docker"
-run_command "sudo systemctl enable docker"
-
-# Install Portainer
-echo "Installing Portainer..."
-run_command "sudo docker volume create portainer_data"
-run_command "sudo docker run -d \
-    -p 9000:9000 \
-    --name portainer \
-    --restart always \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v portainer_data:/data \
-    portainer/portainer-ce"
+# Check if Portainer is already running
+if docker ps -a | grep -q "portainer"; then
+    echo "Portainer is already installed and running."
+else
+    # Install Portainer if it's not already installed
+    echo "Installing Portainer..."
+    run_command "sudo docker volume create portainer_data"
+    run_command "sudo docker run -d \
+        -p 9000:9000 \
+        --name portainer \
+        --restart always \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v portainer_data:/data \
+        portainer/portainer-ce"
+fi
 
 # Get the servers IP
 SERVER_IP=$(hostname -I | awk '{print $1}')
 if [ -z "$SERVER_IP" ]; then
     SERVER_IP=$(curl -s http://checkip.amazonaws.com || echo "unknown")
-fi 
+fi
 
 # Display success message
 echo "Docker and Portainer installation completed successfully!"
