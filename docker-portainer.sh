@@ -41,7 +41,7 @@ cleanup() {
             sudo dnf remove -y docker-ce docker-ce-cli containerd.io || echo "Uninstalling Docker failed."
         fi
     else
-        echo "[DRY RUN] Cleanup actions simulated."
+        echo "[DRY RUN] Cleanup actions done."
     fi
 
     echo "Rollback complete."
